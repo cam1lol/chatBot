@@ -1,0 +1,14 @@
+# Archivos de configuración sensibles
+config.py
+.env
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Directorios específicos de Python
+__pycache__/
+*.pyc
+
+# Archivos de entornos virtuales
+venv/
