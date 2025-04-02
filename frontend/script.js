@@ -1,10 +1,12 @@
 // Obtener los elementos de la UI
-const chatBox = document.querySelector('.chat-box');
-const inputField = document.querySelector('.chat-input input');
-const sendButton = document.querySelector('.chat-input button');
+const chatBox = document.querySelector('#chat-box');
+const inputField = document.querySelector('#user-input');
+const sendButton = document.querySelector('#send-btn');
 
 // Función para enviar un mensaje
-sendButton.addEventListener('click', async () => {
+sendButton.addEventListener('click', async (event) => {
+    event.preventDefault();  // Esto previene la recarga de la página
+
     const userMessage = inputField.value;
     if (!userMessage) return;
 

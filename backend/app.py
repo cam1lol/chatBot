@@ -1,22 +1,27 @@
 import sqlite3
 import openai
 from flask import Flask, request, jsonify
+from flask_cors import CORS
+from dotenv import load_dotenv
 import json
-import re
 import os
+import re
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
-import numpy as np
 
+# Configurar Flask y habilitar CORS
 app = Flask(__name__)
+CORS(app)  # Esto habilita CORS para todas las rutas
+
+# Establecer la clave de API de OpenAI
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+openai.api_key = OPENAI_API_KEY
 
 # Configuración de la base de datos
 def get_db():
     conn = sqlite3.connect('chatbot.db')
     return conn
-
-# Establecer la clave de API de OpenAI
-openai.api_key = ''
 
 # Cargar el dataset de ejemplos desde el archivo JSON
 def cargar_dataset():
@@ -77,9 +82,7 @@ def chat():
     # Primero intenta encontrar una respuesta en el dataset
     bot_reply = obtener_respuesta_dataset(user_message)
 
-    if bot_reply:  # Si hay respuesta en el dataset
-        pass
-    else:  # Si no hay respuesta en el dataset, usa el modelo entrenado
+    if not bot_reply:  # Si no hay respuesta en el dataset, usa el modelo entrenado
         intencion = model.predict(vectorizer.transform([user_message]))[0]
         
         if intencion == 'saludo':
@@ -93,10 +96,10 @@ def chat():
         else:
             # Si no se detecta ninguna intención, el chatbot hace una consulta a OpenAI
             response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": user_message}]
-        )
-        bot_reply = response['choices'][0]['message']['content'].strip()
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": user_message}]
+            )
+            bot_reply = response['choices'][0]['message']['content'].strip()
 
     # Guardar la conversación en la base de datos
     conn = get_db()
