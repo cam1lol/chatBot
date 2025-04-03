@@ -26,14 +26,29 @@ body {
     scrollbar-width: thin;
 }
 
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 10px;
+}
+
+.message.user .avatar {
+    margin-right: 0;
+    margin-left: 10px; 
+}
+
 .message {
     display: flex;
     align-items: center;
+    gap: 10px;
     margin: 10px 0;
     opacity: 0;
     transform: translateY(10px);
     animation: fadeIn 0.3s ease-in forwards;
 }
+
 
 @keyframes fadeIn {
     to {

@@ -11,106 +11,74 @@ from sklearn.naive_bayes import MultinomialNB
 
 # Configurar Flask y habilitar CORS
 app = Flask(__name__)
-CORS(app)  # Esto habilita CORS para todas las rutas
+CORS(app, resources={r"/chat": {"origins": "http://127.0.0.1:5500"}})
 
-# Establecer la clave de API de OpenAI
+# Cargar clave API de OpenAI
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+if not OPENAI_API_KEY:
+    raise ValueError("La clave API de OpenAI no está configurada en el archivo .env")
+
 openai.api_key = OPENAI_API_KEY
 
-# Configuración de la base de datos
+# Conexión a la base de datos
 def get_db():
-    conn = sqlite3.connect('chatbot.db')
-    return conn
+    return sqlite3.connect('chatbot.db')
 
-# Cargar el dataset de ejemplos desde el archivo JSON
+# Cargar dataset desde JSON
 def cargar_dataset():
     with open(os.path.join('dataset', 'chat_dataset.json'), 'r', encoding='utf-8') as f:
         return json.load(f)
 
-dataset = cargar_dataset()  # Cargar los datos al iniciar la aplicación
+dataset = cargar_dataset()
 
-# Lista de intenciones y patrones
-intenciones = {
-    'saludo': ['hola', 'buenos días', 'qué tal', 'cómo estás', 'hola, ¿cómo estás?'],
-    'despedida': ['adiós', 'hasta luego', 'nos vemos', 'chau'],
-    'clima': ['qué tiempo hace', 'cómo está el clima', 'qué clima hay hoy'],
-    'consulta': ['cómo estás', 'quién eres', 'qué haces']
-}
-
-def identificar_intencion(mensaje):
-    """Identifica la intención del mensaje"""
-    mensaje = mensaje.lower()
-    for intencion, patrones in intenciones.items():
-        for patron in patrones:
-            if re.search(patron, mensaje):
-                return intencion
-    return None
-
-def obtener_respuesta_dataset(mensaje):
-    """Busca una respuesta en el dataset cargado"""
-    for item in dataset:
-        if mensaje.lower() in item['input'].lower():
-            return item['output']
-    return None
-
-# Entrenar el modelo de clasificación
+# Entrenar modelo Naive Bayes
 def train_model():
-    """Entrenar el modelo para identificar las intenciones del usuario"""
+    """Entrenar el modelo con inputs y outputs del dataset"""
     inputs = [entry["input"] for entry in dataset]
     outputs = [entry["output"] for entry in dataset]
-    
+
     vectorizer = CountVectorizer()
     X = vectorizer.fit_transform(inputs)
-    
+
     model = MultinomialNB()
     model.fit(X, outputs)
-    
+
     return model, vectorizer
 
-# Entrenar el modelo al iniciar la aplicación
+# Entrenar modelo al iniciar
 model, vectorizer = train_model()
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    # Obtén el mensaje del usuario
     user_message = request.json.get('message')
 
     if not user_message:
         return jsonify({"error": "No se recibió el mensaje del usuario"}), 400
 
-    # Primero intenta encontrar una respuesta en el dataset
-    bot_reply = obtener_respuesta_dataset(user_message)
+    # Intentar predecir una respuesta con el modelo
+    predicted_response = model.predict(vectorizer.transform([user_message]))[0]
 
-    if not bot_reply:  # Si no hay respuesta en el dataset, usa el modelo entrenado
-        intencion = model.predict(vectorizer.transform([user_message]))[0]
-        
-        if intencion == 'saludo':
-            bot_reply = "¡Hola! ¿Cómo te ha ido hoy?"
-        elif intencion == 'despedida':
-            bot_reply = "¡Adiós! ¡Nos vemos pronto!"
-        elif intencion == 'clima':
-            bot_reply = "Lo siento, no tengo acceso al clima actual, pero puedes consultar una aplicación de clima."
-        elif intencion == 'consulta':
-            bot_reply = "Soy un chatbot, ¿en qué puedo ayudarte?"
-        else:
-            # Si no se detecta ninguna intención, el chatbot hace una consulta a OpenAI
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": user_message}]
-            )
-            bot_reply = response['choices'][0]['message']['content'].strip()
+    # Si no hay predicción, usar OpenAI
+    if not predicted_response:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": user_message}]
+        )
+        predicted_response = response['choices'][0]['message']['content'].strip()
 
-    # Guardar la conversación en la base de datos
+    # Guardar en la base de datos
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("INSERT INTO conversations (user_message, bot_response) VALUES (?, ?)",
-                   (user_message, bot_reply))
+                   (user_message, predicted_response))
     conn.commit()
     conn.close()
 
-    # Retornar la respuesta en formato JSON
-    return jsonify({"response": bot_reply})
+    return jsonify({"response": predicted_response})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    import os
+    os.environ["WERKZEUG_RUN_MAIN"] = "true"
+    app.run(debug=True, use_reloader=False)
