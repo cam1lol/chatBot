@@ -59,7 +59,7 @@ El servidor se ejecutará en: http://127.0.0.1:5000
 Puedes probar el chatbot enviando una petición POST a http://127.0.0.1:5000/chat con un JSON:
 
 {
-    "message": "¿Quién es Nikola Tesla?"
+    "message": "Hola"
 }
 
 📌 Tecnologías Usadas
