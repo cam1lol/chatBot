@@ -16,6 +16,7 @@ Integración con un frontend en JavaScript.
 
 📂 Estructura del Proyecto
 
+```
 chatBot/
 │── backend/                # Backend en Flask
 │   │── app.py              # Archivo principal con API REST
@@ -24,6 +25,7 @@ chatBot/
 │   │── requirements.txt    # Dependencias del proyecto
 │── frontend/               # Frontend en JavaScript (HTML, CSS, JS)
 │── README.md               # Este archivo
+```
 
 🔧 Instalación y Configuración
 
